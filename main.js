@@ -4,17 +4,22 @@ canvas.height = window.innerHeight;
 var c = canvas.getContext("2d");
 
 var colors = ["#688990", "#7C6241", "#182A61", "#4E1D0E", "#CEAB4E"];
-var blacks = ["#000000", "#555555", "gray", "purple", "black", "black"];
+var blacks = ["#000000", "#333333", "#222222", "purple", "black", "black"];
 var whites = ["eeeeee", "#ffffff", "#aaaaaa", "rgb(255, 200, 200)", "rgb(200,200,250)"];
 
-const numParticles = 1;
-const numCelestials = 50;
+const numParticles = 5;
+const numCelestials = 100;
 
 var randDirection = [-1, 1];
 var planets = [];
 var blackHoles = [];
 var celestials = [];
 var flash = 0;
+
+var cometX = Math.random()*canvas.width;
+var cometY = Math.random()*canvas.height;
+var cometDx = getRandomIntFromRange(1,2);
+var cometDy = getRandomIntFromRange(1,2);
 
 function init() {
   for (z = 0; z < numParticles; z++) {
@@ -26,7 +31,7 @@ function init() {
 init();
 
 for (z = 0; z < numCelestials; z++) {
-  celestials.push(new CelestialObject());  
+  celestials.push(new CelestialObject());
 }
 
 function animate() {
@@ -39,6 +44,23 @@ function animate() {
   for(z=0; z<numCelestials; z++) {
     celestials[z].draw();
   }  
+
+  if (cometX >= canvas.width) {
+    cometX = 0;
+  }
+
+  if (cometY >= canvas.height) {
+    cometY = 0;
+  }
+
+  cometX += 1;
+  cometY += 1;
+  c.beginPath();
+  c.arc(cometX, cometY, 1, 0, 2*Math.PI);
+  c.fillStyle = "#eee";
+  c.stroke();
+  c.fill();
+
   if (flash > 0) {
     flash = flash-10;
     c.beginPath();
@@ -117,7 +139,7 @@ function BlackHole(x, y) {
 
 function Particle(radius, mass) {
   this.x = (Math.random() * (canvas.width - 2*radius) + radius);
-  this.y = (Math.random() * (canvas.height - 2*radius) + radius);  
+  this.y = (Math.random() * (canvas.height - 2*radius) + radius);
   this.radius = getRandomIntFromRange(10, 30);
   this.minRadius = this.radius;
   this.mass = mass;
@@ -131,7 +153,7 @@ function Particle(radius, mass) {
     c.beginPath();
     c.arc(this.x, this.y, this.radius, 0, 2*Math.PI);
     c.fillStyle = this.color;
-    c.strokeStyle=  this.color;    
+    c.strokeStyle=  this.color;
     c.stroke();
     c.fill();
   }  
@@ -139,60 +161,52 @@ function Particle(radius, mass) {
   this.update = function() {
     hole = closestBlackHole(this);
     var holeIndex = hole.id;
-    this.nextXY(hole);    
+    this.nextXY(hole);
     if ((holeIndex != -1)&&((hole.distance.absX) <= this.radius)&&(hole.distance.absY <= this.radius)) {
-      if (this.radius > 3) {
+      if (this.radius > 10) {
         this.radius -= 1;
       }
       else {
         planets.splice(planets.indexOf(this), 1);
-      }      
-    }    
+      }
+    }
     this.draw();
   }
 
   this.nextXY = function(hole){
     var holeIndex = hole.id;
     var p = this;
-    if (holeIndex != -1) {      
+    if (holeIndex != -1) {
       if (Math.floor(-hole.distance.x) > 0) {
         p.directionX = -1;
-      }    
-      else if (Math.floor(-hole.distance.x) < 0){
+      }
+      else if (Math.floor(-hole.distance.x) < 0) {
         p.directionX = 1;
-      }     
-
+      }
       
       if (Math.floor(-hole.distance.y) > 0) {
         p.directionY = -1;
       }
-      else if (Math.floor(-hole.distance.y) < 0){
+      else if (Math.floor(-hole.distance.y) < 0) {
         p.directionY = 1;
-      }
+      }      
+
+      // SAFE CODE FOR CONSTANT FORCE
 
       if (hole.distance.absX < hole.distance.absY) {
+        p.speedY = Math.sqrt((p.speedY**2) + (150/hole.distance.absY));
         p.speedX = p.speedY*hole.distance.absX/hole.distance.absY;
       }
       else if (hole.distance.absX > hole.distance.absY) {
+        p.speedX = Math.sqrt((p.speedX**2) + (150/hole.distance.absX));
         p.speedY = p.speedX*hole.distance.absY/hole.distance.absX;
       }
       else {
+        p.speedY = Math.sqrt((p.speedY**2) + (150/hole.distance.absY));
         p.speedX = p.speedY;
       } 
       
-      // Speed
-      // if (hole.scalarDistance >= 30) {
-      //  accX = 100/(hole.distance.x**2);
-      // p.speedX = Math.sqrt((p.speedX**2) + (2*accX*Math.abs(hole.distance.x)));
-
-      // accY = 100/(hole.distance.y**2);
-      // p.speedY = Math.sqrt((p.speedY**2) + (2*accY*Math.abs(hole.distance.y))); 
-      // }
-      // else {
-        // p.speedX = 2;
-        // p.speedY = 2;
-      // }
-      
+      //SAFE CODE ENDS      
     }
     else {
       if ((p.x >= (canvas.width-p.radius))||(p.x <= p.radius)) {
@@ -227,13 +241,13 @@ function closestBlackHole(obj) {
             y: blackHoles[i].y - obj.y,
             scalarDistance: minDist,
             absX: Math.abs(blackHoles[i].x - obj.x),
-            absY: Math.abs(blackHoles[i].y - obj.y),
+            absY: Math.abs(blackHoles[i].y - obj.y)
           }
         }
-     	}    
-  	}    
-    return hole;    
-  }
+   	  }    
+ 	  }    
+  return hole;    
+}
 
 window.addEventListener("click", function(event){
   var offsets = canvas.getBoundingClientRect();
